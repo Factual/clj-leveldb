@@ -23,7 +23,8 @@
      DBIterator
      Options
      ReadOptions
-     DB]))
+     DB
+     Range]))
 
 (set! *warn-on-reflection* true)
 
@@ -51,7 +52,12 @@
       clojure.lang.Seqable
       clojure.lang.IPersistentCollection
       (equiv [this x]
-        (= (seq this) x))
+        (loop [a this, b x]
+          (if (or (empty? a) (empty? b))
+            (and (empty? a) (empty? b))
+            (if (= (first x) (first b))
+              (recur (rest a) (rest b))
+              false))))
       (empty [_]
         [])
       (count [this]
@@ -68,7 +74,7 @@
       (first [_]
         (first s))
       (seq [this]
-        (cons (first this) (rest this))))))
+        this))))
 
 (defn- iterator-seq- [^DBIterator iterator start end key-decoder key-encoder val-decoder]
   (if start
@@ -93,7 +99,7 @@
 ;;;
 
 (defprotocol ILevelDB
-  (^:private db-  [_])
+  (^:private ^DB db-  [_])
   (^:private batch- [_])
   (^:private iterator- [_])
   (^:private get- [_ k])
@@ -113,10 +119,10 @@
   (snapshot- [this] this)
   (db- [_] (db- db))
   (get- [_ k]
-    (val-decoder(.get ^DB (db- db) (bs/to-byte-array (key-encoder k)) read-options)))
+    (val-decoder (.get (db- db) (bs/to-byte-array (key-encoder k)) read-options)))
   (iterator- [_ start end]
     (iterator-seq-
-      (.iterator ^DB (db- db) read-options)
+      (.iterator (db- db) read-options)
       start
       end
       key-decoder
@@ -135,9 +141,9 @@
   (db- [_] db)
   (batch- [this] this)
   (put- [_ k v]
-    (.put batch (key-encoder k) (val-encoder v)))
+    (.put batch (bs/to-byte-array (key-encoder k)) (bs/to-byte-array (val-encoder v))))
   (del- [_ k]
-    (.delete batch (key-encoder k)))
+    (.delete batch (bs/to-byte-array (key-encoder k))))
   Closeable
   (close [_]
     (.write db batch)
@@ -234,7 +240,8 @@
 ;;;
 
 (defn get
-  "Returns the value of `key` for the given database or snapshot. If the key doesn't exist, returns `default-value` or nil."
+  "Returns the value of `key` for the given database or snapshot. If the key doesn't exist, returns
+   `default-value` or nil."
   ([db key]
      (get db key nil))
   ([db key default-value]
@@ -244,13 +251,14 @@
          v))))
 
 (defn snapshot
-  "Returns a snapshot of the database that can be used with `get` and `iterator`."
+  "Returns a snapshot of the database that can be used with `get` and `iterator`. This implements
+   java.io.Closeable, and can leak space in the database if not closed."
   [db]
   (snapshot- db))
 
 (defn iterator
-  "Returns a closeable sequence of map entries (accessed with `key` and `val`) that is the inclusive range
-   from `start` to `end`."
+  "Returns a closeable sequence of map entries (accessed with `key` and `val`) that is the inclusive
+   range from `start `to `end`.  If exhausted, the sequence is automatically closed."
   ([db]
      (iterator db nil nil))
   ([db start]
@@ -259,8 +267,7 @@
      (iterator- db start end)))
 
 (defn put
-  "Puts one or more key/value pairs into the given `db`.  These keys and values can be anything
-   that can be transformed into a byte-array."
+  "Puts one or more key/value pairs into the given `db`."
   ([db key val]
      (put- db key val))
   ([db key val & key-vals]
@@ -270,8 +277,7 @@
          (put- batch k v)))))
 
 (defn delete
-  "Deletes one or more keys in the given `db`.  The keys can be anything that can be transformed
-   into a byte-array."
+  "Deletes one or more keys in the given `db`."
   ([db key]
      (del- db key))
   ([db key & keys]
@@ -280,4 +286,29 @@
        (doseq [k keys]
          (del- batch k)))))
 
+(defn stats
+  "Returns statistics for the database."
+  [db property]
+  (.getProperty (db- db) "leveldb.stats"))
+
+(defn approximate-size
+  "Returns an estimate of the size of entries, in bytes, inclusively between `start` and `end`."
+  [db start end]
+  (let [key-encoder (:key-encoder db)]
+    (first
+      (.getApproximateSizes (db- db)
+        (into-array
+          [(Range.
+             (bs/to-byte-array (key-encoder start))
+             (bs/to-byte-array (key-encoder end)))])))))
+
+(defn bounds
+  "Returns a tuple of the lower and upper keys in the database or snapshot."
+  [db]
+  (let [key-decoder (:key-decoder db)]
+    (with-open [^DBIterator iterator (condp instance? db
+                                       LevelDB (.iterator (db- db))
+                                       Snapshot (.iterator (db- db) (:read-options db)))]
+     [(-> (doto iterator .seekToFirst) .peekNext key key-decoder)
+      (-> (doto iterator .seekToLast) .peekNext key key-decoder)])))
 

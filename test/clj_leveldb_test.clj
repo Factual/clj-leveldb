@@ -16,8 +16,8 @@
     (doto (File. (str "/tmp/" (UUID/randomUUID)))
       .deleteOnExit)
     :key-encoder name
-    :key-decoder (comp keyword bs/to-string)
-    :val-decoder (comp edn/read-string bs/to-string)
+    ;:key-decoder (comp keyword bs/to-string)
+    ;:val-decoder (comp edn/read-string bs/to-char-sequence)
     :val-encoder pr-str))
 
 (deftest test-basic-operations
@@ -35,5 +35,25 @@
         (l/iterator db :b :d)))
   (l/delete db :a)
   (is (= nil (l/get db :a)))
-  (is (= ::foo (l/get db :a ::foo))))
+  (is (= ::foo (l/get db :a ::foo)))
+
+  (l/put db :a :b :z :y)
+  (is (= :b (l/get db :a)))
+  (is (= :y (l/get db :z)))
+
+  (is (= [[:a :b] [:z :y]]
+        (l/iterator db)))
+  (is (= [[:a :b]]
+        (l/iterator db :a :x)
+        (l/iterator db nil :x)))
+  (is (= [[:z :y]]
+        (l/iterator db :b)
+        (l/iterator db :b :z)))
+
+  (is (= [:a :z] (l/bounds db)))
+
+  (with-open [snapshot (l/snapshot db)]
+    (l/delete db :a :z)
+    (is (= nil (l/get db :a)))
+    (is (= :b (l/get snapshot :a)))))
 
