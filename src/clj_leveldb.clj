@@ -19,16 +19,15 @@
     [org.fusesource.leveldbjni
      JniDBFactory]
     [org.iq80.leveldb
+     WriteBatch
      DBIterator
      Options
      ReadOptions
      DB]))
 
-;;;
+(set! *warn-on-reflection* true)
 
-(defrecord Snapshot [^DB db ^ReadOptions read-options]
-  Closeable
-  (close [_] (-> read-options .snapshot .close)))
+;;;
 
 (defn- closeable-seq
   "Creates a seq which can be closed, given a latch which can be closed
@@ -50,6 +49,13 @@
       clojure.lang.Sequential
       clojure.lang.ISeq
       clojure.lang.Seqable
+      clojure.lang.IPersistentCollection
+      (equiv [this x]
+        (= (seq this) x))
+      (empty [_]
+        [])
+      (count [this]
+        (count (seq this)))
       (cons [_ a]
         (cons a s))
       (next [this]
@@ -62,105 +68,216 @@
       (first [_]
         (first s))
       (seq [this]
-        (cons (first this) (next this))))))
+        (cons (first this) (rest this))))))
+
+(defn- iterator-seq- [^DBIterator iterator start end key-decoder key-encoder val-decoder]
+  (if start
+    (.seek ^DBIterator iterator (bs/to-byte-array (key-encoder start)))
+    (.seekToFirst ^DBIterator iterator))
+    
+  (let [s (iterator-seq iterator)
+        s (if end
+            (let [end (bs/to-byte-array (key-encoder end))]
+              (take-while
+                #(not (pos? (bs/compare-bytes (key %) end)))
+                s))
+            s)]
+    (closeable-seq
+      (map
+        #(vector
+           (key-decoder (key %))
+           (val-decoder (val %)))
+        s)
+      #(.close iterator))))
 
 ;;;
 
-(defn options
-  "Options that can be used as an argument to `create-db`."
-  [& {:keys [create-if-missing?
-             write-buffer-size
-             block-size
-             max-open-files
-             cache-size
-             comparator
-             paranoid-checks?
-             logger]
-      :or {create-if-missing? true}}]
-  (let [options (doto (Options.)
-                  (.createIfMissing create-if-missing?))]
-    options))
+(defprotocol ILevelDB
+  (^:private db-  [_])
+  (^:private batch- [_])
+  (^:private iterator- [_])
+  (^:private get- [_ k])
+  (^:private put- [_ k v])
+  (^:private del- [_ k])
+  (^:private iterator- [_ start end])
+  (^:private batch- [_])
+  (^:private snapshot- [_]))
+
+(defrecord Snapshot
+  [db
+   key-decoder
+   key-encoder
+   val-decoder
+   ^ReadOptions read-options]
+  ILevelDB
+  (snapshot- [this] this)
+  (db- [_] (db- db))
+  (get- [_ k]
+    (val-decoder(.get ^DB (db- db) (bs/to-byte-array (key-encoder k)) read-options)))
+  (iterator- [_ start end]
+    (iterator-seq-
+      (.iterator ^DB (db- db) read-options)
+      start
+      end
+      key-decoder
+      key-encoder
+      val-decoder))
+  Closeable
+  (close [_]
+    (-> read-options .snapshot .close)))
+
+(defrecord Batch
+  [^DB db
+   ^WriteBatch batch
+   key-encoder
+   val-encoder]
+  ILevelDB
+  (db- [_] db)
+  (batch- [this] this)
+  (put- [_ k v]
+    (.put batch (key-encoder k) (val-encoder v)))
+  (del- [_ k]
+    (.delete batch (key-encoder k)))
+  Closeable
+  (close [_]
+    (.write db batch)
+    (.close batch)))
+
+(defrecord LevelDB
+  [^DB db
+   key-decoder
+   key-encoder
+   val-decoder
+   val-encoder]
+  ILevelDB
+  (db- [_]
+    db)
+  (get- [_ k]
+    (val-decoder (.get db (bs/to-byte-array (key-encoder k)))))
+  (put- [_ k v]
+    (.put db (bs/to-byte-array (key-encoder k)) (bs/to-byte-array (val-encoder v))))
+  (del- [_ k]
+    (.delete db (bs/to-byte-array (key-encoder k))))
+  (snapshot- [this]
+    (->Snapshot
+      this
+      key-decoder
+      key-encoder
+      val-decoder
+      (doto (ReadOptions.)
+        (.snapshot (.getSnapshot db)))))
+  (batch- [this]
+    (->Batch
+      db
+      (.createWriteBatch db)
+      key-encoder
+      val-encoder))
+  (iterator- [_ start end]
+    (iterator-seq-
+      (.iterator db)
+      start
+      end
+      key-decoder
+      key-encoder
+      val-decoder)))
+
+;;;
+
+(def ^:private option-setters
+  {:create-if-missing? #(.createIfMissing ^Options %1 %2)
+   :error-if-exists?   #(.errorIfExists ^Options %1 %2)
+   :write-buffer-size  #(.writeBufferSize ^Options %1 %2)
+   :block-size         #(.blockSize ^Options %1 %2)
+   :max-open-files     #(.maxOpenFiles ^Options %1 %2)
+   :cache-size         #(.cacheSize ^Options %1 %2)
+   :comparator         #(.cacheSize ^Options %1 %2)
+   :paranoid-checks?   #(.paranoidChecks ^Options %1 %2)
+   :logger             #(.logger ^Options %1 %2)})
 
 (defn create-db
   ([file]
      (create-db file nil))
-  ([file opts]
-     (.open JniDBFactory/factory (io/file file) (or opts (options)))))
+  ([file &
+    {:keys [key-decoder
+            key-encoder
+            val-decoder
+            val-encoder
+            create-if-missing?
+            error-if-exists?
+            write-buffer-size
+            block-size
+            max-open-files
+            cache-size
+            comparator
+            paranoid-checks?
+            logger]
+     :or {key-decoder identity
+          key-encoder identity
+          val-decoder identity
+          val-encoder identity
+          create-if-missing? true
+          error-if-exists? false}
+     :as options}]
+     (->LevelDB
+       (.open JniDBFactory/factory
+         (io/file file)
+         (let [opts (Options.)]
+           (doseq [[k v] options]
+             (when (and v (contains? option-setters k))
+               ((option-setters k) opts v)))
+           opts))
+       key-decoder
+       key-encoder
+       val-decoder
+       val-encoder)))
+
+;;;
 
 (defn get
-  "Returns the value of `key` for the given database or snapshot, as a byte-array.  If the key doesn't
-   exist, returns nil."
-  [db-or-snapshot key]
-  (condp instance? db-or-snapshot
-    DB       (.get ^DB db-or-snapshot (bs/to-byte-array key))
-    Snapshot (.get
-               ^DB (.db ^Snapshot db-or-snapshot) (bs/to-byte-array key)
-               (.read-options ^Snapshot db-or-snapshot))))
+  "Returns the value of `key` for the given database or snapshot. If the key doesn't exist, returns `default-value` or nil."
+  ([db key]
+     (get db key nil))
+  ([db key default-value]
+     (let [v (get- db key)]
+       (if (nil? v)
+         default-value
+         v))))
 
 (defn snapshot
   "Returns a snapshot of the database that can be used with `get` and `iterator`."
-  [^DB db]
-  (->Snapshot
-    db
-    (doto (ReadOptions.)
-      (.snapshot (.getSnapshot db)))))
+  [db]
+  (snapshot- db))
 
 (defn iterator
   "Returns a closeable sequence of map entries (accessed with `key` and `val`) that is the inclusive range
    from `start` to `end`."
-  ([db-or-snapshot]
-     (iterator db-or-snapshot nil nil))
-  ([db-or-snapshot start]
-     (iterator db-or-snapshot start nil))
-  ([db-or-snapshot start end]
-     (let [iterator (condp instance? db-or-snapshot
-                      DB       (.iterator ^DB db)
-                      Snapshot (.iterator
-                                 ^DB (.db ^Snapshot db-or-snapshot)
-                                 ^ReadOptions (.read-options ^Snapshot db-or-snapshot)))]
-       (if start
-         (.seek ^DBIterator iterator (bs/to-byte-array start))
-         (.seekToFirst ^DBIterator iterator))
-
-       (let [s (iterator-seq iterator)
-             s (if end
-                 (let [end (bs/to-byte-array end)]
-                   (take-while
-                     #(not (pos? (bs/compare-bytes (key %) end)))
-                     s))
-                 s)]
-         (closeable-seq s #(.close ^Closeable iterator))))))
+  ([db]
+     (iterator db nil nil))
+  ([db start]
+     (iterator db start nil))
+  ([db start end]
+     (iterator- db start end)))
 
 (defn put
   "Puts one or more key/value pairs into the given `db`.  These keys and values can be anything
    that can be transformed into a byte-array."
-  ([^DB db key val]
-     (.put db
-       (bs/to-byte-array key)
-       (bs/to-byte-array val)))
-  ([^DB db key val & key-vals]
-     (with-open [batch (.createWriteBatch db)]
-       (.put batch
-         (bs/to-byte-array key)
-         (bs/to-byte-array val))
+  ([db key val]
+     (put- db key val))
+  ([db key val & key-vals]
+     (with-open [^Batch batch (batch- db)]
+       (put- batch key val)
        (doseq [[k v] (partition 2 key-vals)]
-         (.put batch
-           (bs/to-byte-array k)
-           (bs/to-byte-array v)))
-       (.write db batch))))
+         (put- batch k v)))))
 
 (defn delete
   "Deletes one or more keys in the given `db`.  The keys can be anything that can be transformed
    into a byte-array."
-  ([^DB db key]
-     (.delete db (bs/to-byte-array key)))
-  ([^DB db key & keys]
-     (with-open [batch (.createWriteBatch db)]
-       (.delete batch
-         (bs/to-byte-array key))
+  ([db key]
+     (del- db key))
+  ([db key & keys]
+     (with-open [^Batch batch (batch- db)]
+       (del- batch key)
        (doseq [k keys]
-         (.delete batch
-           (bs/to-byte-array k)))
-       (.write db batch))))
+         (del- batch k)))))
 
 
