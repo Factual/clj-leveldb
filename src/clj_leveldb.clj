@@ -9,7 +9,7 @@
 ;; without the prior written permission of Factual Inc.
 
 (ns clj-leveldb
-  (:refer-clojure :exclude [get])
+  (:refer-clojure :exclude [get sync])
   (:require
     [clojure.java.io :as io]
     [byte-streams :as bs])
@@ -23,6 +23,7 @@
      DBIterator
      Options
      ReadOptions
+     WriteOptions
      DB
      Range]))
 
@@ -103,10 +104,10 @@
   (^:private batch- [_])
   (^:private iterator- [_])
   (^:private get- [_ k])
-  (^:private put- [_ k v])
-  (^:private del- [_ k])
+  (^:private put- [_ k v options])
+  (^:private del- [_ k options])
   (^:private iterator- [_ start end])
-  (^:private batch- [_])
+  (^:private batch- [_ options])
   (^:private snapshot- [_]))
 
 (defrecord Snapshot
@@ -136,17 +137,22 @@
   [^DB db
    ^WriteBatch batch
    key-encoder
-   val-encoder]
+   val-encoder
+   ^WriteOptions options]
   ILevelDB
   (db- [_] db)
-  (batch- [this] this)
-  (put- [_ k v]
-    (.put batch (bs/to-byte-array (key-encoder k)) (bs/to-byte-array (val-encoder v))))
-  (del- [_ k]
+  (batch- [this _] this)
+  (put- [_ k v _]
+    (.put batch
+      (bs/to-byte-array (key-encoder k))
+      (bs/to-byte-array (val-encoder v))))
+  (del- [_ k _]
     (.delete batch (bs/to-byte-array (key-encoder k))))
   Closeable
   (close [_]
-    (.write db batch)
+    (if options
+      (.write db batch options)
+      (.write db batch))
     (.close batch)))
 
 (defrecord LevelDB
@@ -155,15 +161,25 @@
    key-encoder
    val-decoder
    val-encoder]
+  Closeable
+  (close [_] (.close db))
   ILevelDB
   (db- [_]
     db)
   (get- [_ k]
-    (val-decoder (.get db (bs/to-byte-array (key-encoder k)))))
-  (put- [_ k v]
-    (.put db (bs/to-byte-array (key-encoder k)) (bs/to-byte-array (val-encoder v))))
-  (del- [_ k]
-    (.delete db (bs/to-byte-array (key-encoder k))))
+    (let [k (bs/to-byte-array (key-encoder k))]
+      (val-decoder (.get db k))))
+  (put- [_ k v options]
+    (let [k (bs/to-byte-array (key-encoder k))
+          v (bs/to-byte-array (val-encoder v))]
+      (if options
+        (.put db k v options)
+        (.put db k v))))
+  (del- [_ k options]
+    (let [k (bs/to-byte-array (key-encoder k))]
+      (if options
+        (.delete db k options)
+        (.delete db k))))
   (snapshot- [this]
     (->Snapshot
       this
@@ -172,12 +188,13 @@
       val-decoder
       (doto (ReadOptions.)
         (.snapshot (.getSnapshot db)))))
-  (batch- [this]
+  (batch- [this options]
     (->Batch
       db
       (.createWriteBatch db)
       key-encoder
-      val-encoder))
+      val-encoder
+      options))
   (iterator- [_ start end]
     (iterator-seq-
       (.iterator db)
@@ -196,46 +213,47 @@
    :block-size         #(.blockSize ^Options %1 %2)
    :max-open-files     #(.maxOpenFiles ^Options %1 %2)
    :cache-size         #(.cacheSize ^Options %1 %2)
-   :comparator         #(.cacheSize ^Options %1 %2)
+   :comparator         #(.comparator ^Options %1 %2)
    :paranoid-checks?   #(.paranoidChecks ^Options %1 %2)
    :logger             #(.logger ^Options %1 %2)})
 
 (defn create-db
-  ([file]
-     (create-db file nil))
-  ([file &
-    {:keys [key-decoder
-            key-encoder
-            val-decoder
-            val-encoder
-            create-if-missing?
-            error-if-exists?
-            write-buffer-size
-            block-size
-            max-open-files
-            cache-size
-            comparator
-            paranoid-checks?
-            logger]
-     :or {key-decoder identity
-          key-encoder identity
-          val-decoder identity
-          val-encoder identity
-          create-if-missing? true
-          error-if-exists? false}
-     :as options}]
-     (->LevelDB
-       (.open JniDBFactory/factory
-         (io/file file)
-         (let [opts (Options.)]
-           (doseq [[k v] options]
-             (when (and v (contains? option-setters k))
-               ((option-setters k) opts v)))
-           opts))
-       key-decoder
-       key-encoder
-       val-decoder
-       val-encoder)))
+  "Creates a closeable database object, which takes a directory and zero or more options.
+
+   The key and val encoder/decoders are functions for transforming to and from byte-arrays." 
+  [directory &
+   {:keys [key-decoder
+           key-encoder
+           val-decoder
+           val-encoder
+           create-if-missing?
+           error-if-exists?
+           write-buffer-size
+           block-size
+           max-open-files
+           cache-size
+           comparator
+           paranoid-checks?
+           logger]
+    :or {key-decoder identity
+         key-encoder identity
+         val-decoder identity
+         val-encoder identity
+         create-if-missing? true
+         error-if-exists? false}
+    :as options}]
+  (->LevelDB
+    (.open JniDBFactory/factory
+      (io/file directory)
+      (let [opts (Options.)]
+        (doseq [[k v] options]
+          (when (and v (contains? option-setters k))
+            ((option-setters k) opts v)))
+        opts))
+    key-decoder
+    key-encoder
+    val-decoder
+    val-encoder))
 
 ;;;
 
@@ -269,22 +287,28 @@
 (defn put
   "Puts one or more key/value pairs into the given `db`."
   ([db key val]
-     (put- db key val))
+     (put- db key val nil))
   ([db key val & key-vals]
-     (with-open [^Batch batch (batch- db)]
-       (put- batch key val)
+     (with-open [^Batch batch (batch- db nil)]
+       (put- batch key val nil)
        (doseq [[k v] (partition 2 key-vals)]
-         (put- batch k v)))))
+         (put- batch k v nil)))))
 
 (defn delete
   "Deletes one or more keys in the given `db`."
   ([db key]
-     (del- db key))
+     (del- db key nil))
   ([db key & keys]
-     (with-open [^Batch batch (batch- db)]
-       (del- batch key)
+     (with-open [^Batch batch (batch- db nil)]
+       (del- batch key nil)
        (doseq [k keys]
-         (del- batch k)))))
+         (del- batch k nil)))))
+
+(defn sync
+  "Forces the database to fsync."
+  [db]
+  (with-open [^Batch batch (batch- db (doto (WriteOptions.) (.sync true)))]
+    ))
 
 (defn stats
   "Returns statistics for the database."
@@ -311,4 +335,18 @@
                                        Snapshot (.iterator (db- db) (:read-options db)))]
      [(-> (doto iterator .seekToFirst) .peekNext key key-decoder)
       (-> (doto iterator .seekToLast) .peekNext key key-decoder)])))
+
+(defn compact
+  "Forces compaction of database over the given range. If `start` or `end` are nil, they default to
+   the full range of the database."
+  ([db]
+     (compact db nil nil))
+  ([db start]
+     (compact db start nil))
+  ([db start end]
+     (let [encoder (:key-encoder db)
+           [start' end'] (bounds db)
+           start (encoder (or start start'))
+           end (encoder (or end end'))]
+       (.compactRange (db- db) start end))))
 

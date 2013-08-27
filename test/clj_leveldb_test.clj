@@ -16,8 +16,8 @@
     (doto (File. (str "/tmp/" (UUID/randomUUID)))
       .deleteOnExit)
     :key-encoder name
-    ;:key-decoder (comp keyword bs/to-string)
-    ;:val-decoder (comp edn/read-string bs/to-char-sequence)
+    :key-decoder (comp keyword bs/to-string)
+    :val-decoder (comp edn/read-string bs/to-char-sequence)
     :val-encoder pr-str))
 
 (deftest test-basic-operations
