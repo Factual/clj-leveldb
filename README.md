@@ -24,8 +24,8 @@ Notice that the value returned is a byte-array.  This is because byte arrays are
 
 ```clj
 clj-leveldb> (def db (create-db "/tmp/leveldb" 
-                       :key-decoder byte-streams/to-string 
-                       :val-decoder byte-streams/to-string))
+                       {:key-decoder byte-streams/to-string 
+                        :val-decoder byte-streams/to-string}))
 #'clj-leveldb/db
 clj-leveldb> (get db "a")
 "b"
