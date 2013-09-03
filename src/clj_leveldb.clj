@@ -1,13 +1,3 @@
-;; Copyright 2008-2013 Factual Inc.
-;; All Rights Reserved.
-;;
-;; This is UNPUBLISHED PROPRIETARY SOURCE CODE of Factual Inc.
-;; Factual Inc. reserves all rights in the source code as
-;; delivered. The source code and all contents of this file, may not be
-;; used, copied, modified, distributed, sold, disclosed to third parties
-;; or duplicated in any form, in whole or in part, for any purpose,
-;; without the prior written permission of Factual Inc.
-
 (ns clj-leveldb
   (:refer-clojure :exclude [get sync])
   (:require
@@ -26,8 +16,6 @@
      WriteOptions
      DB
      Range]))
-
-(set! *warn-on-reflection* true)
 
 ;;;
 
