@@ -1,4 +1,4 @@
-(defproject com.factual/clj-leveldb "0.1.0"
+(defproject factual/clj-leveldb "0.1.0"
   :description "an idiomatic wrapper for LevelDB"
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}

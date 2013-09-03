@@ -57,7 +57,7 @@ clj-leveldb> (iterator db nil "c")
 
 Syncing writes to disk can be forced via `sync`, and compaction can be forced via `compact`.
 
-## License
+### license
 
 Copyright © 2013 Factual, Inc.
 
