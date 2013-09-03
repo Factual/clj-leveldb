@@ -221,7 +221,7 @@
   "Creates a closeable database object, which takes a directory and zero or more options.
 
    The key and val encoder/decoders are functions for transforming to and from byte-arrays." 
-  [directory &
+  [directory
    {:keys [key-decoder
            key-encoder
            val-decoder
@@ -333,8 +333,9 @@
     (with-open [^DBIterator iterator (condp instance? db
                                        LevelDB (.iterator (db- db))
                                        Snapshot (.iterator (db- db) (:read-options db)))]
-     [(-> (doto iterator .seekToFirst) .peekNext key key-decoder)
-      (-> (doto iterator .seekToLast) .peekNext key key-decoder)])))
+      (when (.hasNext (doto iterator .seekToFirst))
+        [(-> (doto iterator .seekToFirst) .peekNext key key-decoder)
+         (-> (doto iterator .seekToLast) .peekNext key key-decoder)]))))
 
 (defn compact
   "Forces compaction of database over the given range. If `start` or `end` are nil, they default to
@@ -346,7 +347,10 @@
   ([db start end]
      (let [encoder (:key-encoder db)
            [start' end'] (bounds db)
-           start (encoder (or start start'))
-           end (encoder (or end end'))]
-       (.compactRange (db- db) start end))))
+           start (or start start')
+           end (or end end')]
+       (when (and start end)
+         (.compactRange (db- db)
+           (bs/to-byte-array (encoder start))
+           (bs/to-byte-array (encoder end)))))))
 

@@ -15,10 +15,10 @@
   (l/create-db
     (doto (File. (str "/tmp/" (UUID/randomUUID)))
       .deleteOnExit)
-    :key-encoder name
-    :key-decoder (comp keyword bs/to-string)
-    :val-decoder (comp edn/read-string bs/to-char-sequence)
-    :val-encoder pr-str))
+    {:key-encoder name
+     :key-decoder (comp keyword bs/to-string)
+     :val-decoder (comp edn/read-string bs/to-char-sequence)
+     :val-encoder pr-str}))
 
 (deftest test-basic-operations
   (l/put db :a :b)
@@ -52,8 +52,12 @@
 
   (is (= [:a :z] (l/bounds db)))
 
+  (apply l/compact db (l/bounds db))
+
   (with-open [snapshot (l/snapshot db)]
     (l/delete db :a :z)
     (is (= nil (l/get db :a)))
-    (is (= :b (l/get snapshot :a)))))
+    (is (= :b (l/get snapshot :a))))
+
+  (apply l/compact db (l/bounds db)))
 
