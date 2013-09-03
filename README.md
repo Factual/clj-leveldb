@@ -46,7 +46,7 @@ nil
 
 We can also get a sequence of all key/value pairs, either in the entire database or within a given range using `iterator`:
 
-```
+```clj
 clj-leveldb> (put db "a" "b" "c" "d" "e" "f")
 nil
 clj-leveldb> (iterator db)
