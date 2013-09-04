@@ -33,7 +33,7 @@ clj-leveldb> (get db "a")
 "b"
 ```
 
-Notice that we haven't defined `key-encoder` or `val-encoder`; this is because there's a default transformation between strings and byte-arrays, which assumes a utf-8 encoding.  If we wanted to support keywords, or use a different encoding, we'd have explicitly specify encoders.
+Notice that we haven't defined `key-encoder` or `val-encoder`; this is because there's a default transformation between strings and byte-arrays, which assumes a utf-8 encoding.  If we wanted to support keywords, or use a different encoding, we'd have to explicitly specify encoders.
 
 Both `put` and `delete` can take multiple values, which will be written in batch:
 

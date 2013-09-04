@@ -14,6 +14,7 @@
      Options
      ReadOptions
      WriteOptions
+     CompressionType
      DB
      Range]))
 
@@ -203,6 +204,7 @@
    :cache-size         #(.cacheSize ^Options %1 %2)
    :comparator         #(.comparator ^Options %1 %2)
    :paranoid-checks?   #(.paranoidChecks ^Options %1 %2)
+   :compress?          #(.compressionType ^Options %1 (if % CompressionType/SNAPPY CompressionType/NONE))
    :logger             #(.logger ^Options %1 %2)})
 
 (defn create-db
@@ -221,12 +223,14 @@
            max-open-files
            cache-size
            comparator
+           compress?
            paranoid-checks?
            logger]
     :or {key-decoder identity
          key-encoder identity
          val-decoder identity
          val-encoder identity
+         compress? true
          create-if-missing? true
          error-if-exists? false}
     :as options}]
