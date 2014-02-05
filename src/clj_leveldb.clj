@@ -200,6 +200,7 @@
    :error-if-exists?   #(.errorIfExists ^Options %1 %2)
    :write-buffer-size  #(.writeBufferSize ^Options %1 %2)
    :block-size         #(.blockSize ^Options %1 %2)
+   :block-restart-interval #(.blockRestartInterval ^Options %1 %2)
    :max-open-files     #(.maxOpenFiles ^Options %1 %2)
    :cache-size         #(.cacheSize ^Options %1 %2)
    :comparator         #(.comparator ^Options %1 %2)
@@ -225,12 +226,16 @@
            comparator
            compress?
            paranoid-checks?
+           block-restart-interval
            logger]
     :or {key-decoder identity
          key-encoder identity
          val-decoder identity
          val-encoder identity
          compress? true
+         cache-size (* 32 1024 1024)
+         block-size (* 16 1024)
+         write-buffer-size (* 32 1024 1024)
          create-if-missing? true
          error-if-exists? false}
     :as options}]
@@ -278,6 +283,8 @@
 
 (defn put
   "Puts one or more key/value pairs into the given `db`."
+  ([db]
+     )
   ([db key val]
      (put- db key val nil))
   ([db key val & key-vals]
@@ -288,6 +295,8 @@
 
 (defn delete
   "Deletes one or more keys in the given `db`."
+  ([db]
+     )
   ([db key]
      (del- db key nil))
   ([db key & keys]
