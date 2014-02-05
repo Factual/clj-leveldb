@@ -84,7 +84,7 @@ the full range of the database.</p>
           </div><div class="public">
             <h3><a id="var-create-db" class="source var-name" href="/src/clj_leveldb.clj">create-db</a></h3>
             <h4 class="var-type fn" id="var-type">fn</h4>
-            <div class="usage">[directory {:keys [key-decoder key-encoder val-decoder val-encoder create-if-missing? error-if-exists? write-buffer-size block-size max-open-files cache-size comparator compress? paranoid-checks? logger], :or {key-decoder identity, key-encoder identity, val-decoder identity, val-encoder identity, compress? true, create-if-missing? true, error-if-exists? false}, :as options}]</div>
+            <div class="usage">[directory {:keys [key-decoder key-encoder val-decoder val-encoder create-if-missing? error-if-exists? write-buffer-size block-size max-open-files cache-size comparator compress? paranoid-checks? block-restart-interval logger], :or {val-encoder identity, error-if-exists? false, val-decoder identity, block-size (* 16 1024), key-encoder identity, create-if-missing? true, key-decoder identity, cache-size (* 32 1024 1024), write-buffer-size (* 32 1024 1024), compress? true}, :as options}]</div>
             
             
             <div class="doc"><p>Creates a closeable database object, which takes a directory and zero or more options.</p>
@@ -94,7 +94,7 @@ the full range of the database.</p>
           </div><div class="public">
             <h3><a id="var-delete" class="source var-name" href="/src/clj_leveldb.clj">delete</a></h3>
             <h4 class="var-type fn" id="var-type">fn</h4>
-            <div class="usage">[db key]</div><div class="usage">[db key &amp; keys]</div>
+            <div class="usage">[db]</div><div class="usage">[db key]</div><div class="usage">[db key &amp; keys]</div>
             
             
             <div class="doc"><p>Deletes one or more keys in the given <code>db</code>.</p>
@@ -144,7 +144,7 @@ range from <code>start</code>to <code>end</code>.  If exhausted, the sequence is
           </div><div class="public">
             <h3><a id="var-put" class="source var-name" href="/src/clj_leveldb.clj">put</a></h3>
             <h4 class="var-type fn" id="var-type">fn</h4>
-            <div class="usage">[db key val]</div><div class="usage">[db key val &amp; key-vals]</div>
+            <div class="usage">[db]</div><div class="usage">[db key val]</div><div class="usage">[db key val &amp; key-vals]</div>
             
             
             <div class="doc"><p>Puts one or more key/value pairs into the given <code>db</code>.</p>
