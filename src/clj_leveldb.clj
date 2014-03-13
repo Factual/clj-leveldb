@@ -70,7 +70,7 @@
   (if start
     (.seek ^DBIterator iterator (bs/to-byte-array (key-encoder start)))
     (.seekToFirst ^DBIterator iterator))
-    
+
   (let [s (iterator-seq iterator)
         s (if end
             (let [end (bs/to-byte-array (key-encoder end))]
@@ -84,7 +84,11 @@
            (key-decoder (key %))
            (val-decoder (val %)))
         s)
-      #(.close iterator))))
+      (reify
+        Object
+        (finalize [_] (.close iterator))
+        clojure.lang.IFn
+        (invoke [_] (.close iterator))))))
 
 ;;;
 
@@ -120,7 +124,8 @@
       val-decoder))
   Closeable
   (close [_]
-    (-> read-options .snapshot .close)))
+    (-> read-options .snapshot .close))
+  (finalize [this] (.close this)))
 
 (defrecord Batch
   [^DB db
@@ -211,7 +216,7 @@
 (defn create-db
   "Creates a closeable database object, which takes a directory and zero or more options.
 
-   The key and val encoder/decoders are functions for transforming to and from byte-arrays." 
+   The key and val encoder/decoders are functions for transforming to and from byte-arrays."
   [directory
    {:keys [key-decoder
            key-encoder
@@ -251,6 +256,20 @@
     key-encoder
     val-decoder
     val-encoder))
+
+(defn destroy-db
+  "Destroys the database at the specified `directory`."
+  [directory]
+  (.destroy JniDBFactory/factory
+    (io/file directory)
+    (Options.)))
+
+(defn repair-db
+  "Repairs the database at the specified `directory`."
+  [directory]
+  (.repair JniDBFactory/factory
+    (io/file directory)
+    (Options.)))
 
 ;;;
 
@@ -316,17 +335,6 @@
   [db property]
   (.getProperty (db- db) "leveldb.stats"))
 
-(defn approximate-size
-  "Returns an estimate of the size of entries, in bytes, inclusively between `start` and `end`."
-  [db start end]
-  (let [key-encoder (:key-encoder db)]
-    (first
-      (.getApproximateSizes (db- db)
-        (into-array
-          [(Range.
-             (bs/to-byte-array (key-encoder start))
-             (bs/to-byte-array (key-encoder end)))])))))
-
 (defn bounds
   "Returns a tuple of the lower and upper keys in the database or snapshot."
   [db]
@@ -337,6 +345,19 @@
       (when (.hasNext (doto iterator .seekToFirst))
         [(-> (doto iterator .seekToFirst) .peekNext key key-decoder)
          (-> (doto iterator .seekToLast) .peekNext key key-decoder)]))))
+
+(defn approximate-size
+  "Returns an estimate of the size of entries, in bytes, inclusively between `start` and `end`."
+  ([db]
+     (apply approximate-size db (bounds db)))
+  ([db start end]
+     (let [key-encoder (:key-encoder db)]
+       (first
+         (.getApproximateSizes (db- db)
+           (into-array
+             [(Range.
+                (bs/to-byte-array (key-encoder start))
+                (bs/to-byte-array (key-encoder end)))]))))))
 
 (defn compact
   "Forces compaction of database over the given range. If `start` or `end` are nil, they default to
@@ -354,4 +375,3 @@
          (.compactRange (db- db)
            (bs/to-byte-array (encoder start))
            (bs/to-byte-array (encoder end)))))))
-

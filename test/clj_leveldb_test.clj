@@ -52,12 +52,11 @@
 
   (is (= [:a :z] (l/bounds db)))
 
-  (apply l/compact db (l/bounds db))
+  (l/compact db)
 
   (with-open [snapshot (l/snapshot db)]
     (l/delete db :a :z)
     (is (= nil (l/get db :a)))
     (is (= :b (l/get snapshot :a))))
 
-  (apply l/compact db (l/bounds db)))
-
+  (l/compact db))

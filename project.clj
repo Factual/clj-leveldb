@@ -3,7 +3,7 @@
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :dependencies [[org.fusesource.leveldbjni/leveldbjni-all "1.8"]
-                 [org.iq80.leveldb/leveldb-api "0.6"]
+                 [org.iq80.leveldb/leveldb-api "0.7"]
                  [byte-streams "0.1.9"]]
   :profiles {:dev {:dependencies [[org.clojure/clojure "1.5.1"]
                                   [criterium "0.4.3"]
@@ -11,4 +11,3 @@
   :plugins [[codox "0.6.4"]]
   :codox {:writer codox-md.writer/write-docs
           :include [clj-leveldb]})
-
