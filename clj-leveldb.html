@@ -22,7 +22,7 @@
       <div id="vars" class="sidebar">
         <h3>Public Vars</h3>
         <ul class="ns-var-links">
-          <li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var--%3EBatch">-&gt;Batch</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var--%3ELevelDB">-&gt;LevelDB</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var--%3ESnapshot">-&gt;Snapshot</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-approximate-size">approximate-size</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-bounds">bounds</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-compact">compact</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-create-db">create-db</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-delete">delete</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-get">get</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-iterator">iterator</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-map-%3EBatch">map-&gt;Batch</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-map-%3ELevelDB">map-&gt;LevelDB</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-map-%3ESnapshot">map-&gt;Snapshot</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-put">put</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-snapshot">snapshot</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-stats">stats</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-sync">sync</a></li>
+          <li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var--%3EBatch">-&gt;Batch</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var--%3ELevelDB">-&gt;LevelDB</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var--%3ESnapshot">-&gt;Snapshot</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-approximate-size">approximate-size</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-bounds">bounds</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-compact">compact</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-create-db">create-db</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-delete">delete</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-destroy-db">destroy-db</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-get">get</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-iterator">iterator</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-map-%3EBatch">map-&gt;Batch</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-map-%3ELevelDB">map-&gt;LevelDB</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-map-%3ESnapshot">map-&gt;Snapshot</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-put">put</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-repair-db">repair-db</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-snapshot">snapshot</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-stats">stats</a></li><li class="ns-var-list"><a class="ns-var-link ns-var-name" href="clj-leveldb.html#var-sync">sync</a></li>
         </ul>
       </div>
     </navigation>
@@ -59,7 +59,7 @@
           </div><div class="public">
             <h3><a id="var-approximate-size" class="source var-name" href="/src/clj_leveldb.clj">approximate-size</a></h3>
             <h4 class="var-type fn" id="var-type">fn</h4>
-            <div class="usage">[db start end]</div>
+            <div class="usage">[db]</div><div class="usage">[db start end]</div>
             
             
             <div class="doc"><p>Returns an estimate of the size of entries, in bytes, inclusively between <code>start</code> and <code>end</code>.</p>
@@ -98,6 +98,14 @@ the full range of the database.</p>
             
             
             <div class="doc"><p>Deletes one or more keys in the given <code>db</code>.</p>
+</div>
+          </div><div class="public">
+            <h3><a id="var-destroy-db" class="source var-name" href="/src/clj_leveldb.clj">destroy-db</a></h3>
+            <h4 class="var-type fn" id="var-type">fn</h4>
+            <div class="usage">[directory]</div>
+            
+            
+            <div class="doc"><p>Destroys the database at the specified <code>directory</code>.</p>
 </div>
           </div><div class="public">
             <h3><a id="var-get" class="source var-name" href="/src/clj_leveldb.clj">get</a></h3>
@@ -148,6 +156,14 @@ range from <code>start</code>to <code>end</code>.  If exhausted, the sequence is
             
             
             <div class="doc"><p>Puts one or more key/value pairs into the given <code>db</code>.</p>
+</div>
+          </div><div class="public">
+            <h3><a id="var-repair-db" class="source var-name" href="/src/clj_leveldb.clj">repair-db</a></h3>
+            <h4 class="var-type fn" id="var-type">fn</h4>
+            <div class="usage">[directory]</div>
+            
+            
+            <div class="doc"><p>Repairs the database at the specified <code>directory</code>.</p>
 </div>
           </div><div class="public">
             <h3><a id="var-snapshot" class="source var-name" href="/src/clj_leveldb.clj">snapshot</a></h3>
