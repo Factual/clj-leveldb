@@ -1,4 +1,4 @@
-(ns clj-leveldb
+(ns clj-rocksdb
   (:refer-clojure :exclude [get sync])
   (:require
     [clojure.java.io :as io]
@@ -6,7 +6,7 @@
   (:import
     [java.io
      Closeable]
-    [org.fusesource.leveldbjni
+    [org.fusesource.rocksdbjni
      JniDBFactory]
     [org.iq80.leveldb
      WriteBatch
@@ -94,13 +94,11 @@
 
 (defprotocol ILevelDB
   (^:private ^DB db-  [_])
-  (^:private batch- [_])
-  (^:private iterator- [_])
   (^:private get- [_ k])
   (^:private put- [_ k v options])
   (^:private del- [_ k options])
-  (^:private iterator- [_ start end])
-  (^:private batch- [_ options])
+  (^:private iterator- [_] [_ start end])
+  (^:private batch- [_] [_ options])
   (^:private snapshot- [_]))
 
 (defrecord Snapshot
