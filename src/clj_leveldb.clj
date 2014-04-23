@@ -5,18 +5,32 @@
     [byte-streams :as bs])
   (:import
     [java.io
-     Closeable]
-    [org.fusesource.leveldbjni
-     JniDBFactory]
-    [org.iq80.leveldb
-     WriteBatch
-     DBIterator
-     Options
-     ReadOptions
-     WriteOptions
-     CompressionType
-     DB
-     Range]))
+     Closeable]))
+
+;; HawtJNI tends to leave trash in /tmp, repeated loading of this
+;; namespace can add up
+(let [tmp-dir (str
+                (System/getProperty "java.io.tmpdir")
+                (System/getProperty "file.separator")
+                "com.factual.clj-leveldb")]
+  (let [d (io/file tmp-dir)]
+    (doseq [f (.listFiles d)]
+      (.delete f))
+    (.delete d))
+  (System/setProperty "library.leveldbjni.path" tmp-dir))
+
+(import
+  '[org.fusesource.leveldbjni
+    JniDBFactory]
+  '[org.iq80.leveldb
+    WriteBatch
+    DBIterator
+    Options
+    ReadOptions
+    WriteOptions
+    CompressionType
+    DB
+    Range])
 
 ;;;
 
