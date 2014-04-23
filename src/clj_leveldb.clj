@@ -8,15 +8,19 @@
      Closeable]))
 
 ;; HawtJNI tends to leave trash in /tmp, repeated loading of this
-;; namespace can add up
+;; namespace can add up.  We allow the 10 newest files to stick
+;; around in case there's some sort of contention, since we're only
+;; trying to put an upper bound on how many of these files stick around.
 (let [tmp-dir (str
                 (System/getProperty "java.io.tmpdir")
                 (System/getProperty "file.separator")
                 "com.factual.clj-leveldb")]
   (let [d (io/file tmp-dir)]
-    (doseq [f (.listFiles d)]
-      (.delete f))
-    (.delete d))
+    (doseq [f (->> (.listFiles d)
+                (sort-by #(.lastModified %))
+                reverse
+                (drop 10))]
+      (.delete f)))
   (System/setProperty "library.leveldbjni.path" tmp-dir))
 
 (import
