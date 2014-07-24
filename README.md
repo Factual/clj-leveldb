@@ -9,7 +9,7 @@ This is a self-contained wrapper around [LevelDB](https://code.google.com/p/leve
 To create or access a database, use `clj-leveldb/create-db`:
 
 ```clj
-clj-leveldb> (def db (create-db "/tmp/leveldb"))
+clj-leveldb> (def db (create-db "/tmp/leveldb" {}))
 #'clj-leveldb/db
 ```
 
