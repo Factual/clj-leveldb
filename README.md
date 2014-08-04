@@ -3,7 +3,7 @@ This is a self-contained wrapper around [LevelDB](https://code.google.com/p/leve
 ### basic usage
 
 ```clj
-[factual/clj-leveldb "0.1.0"]
+[factual/clj-leveldb "0.1.1"]
 ```
 
 To create or access a database, use `clj-leveldb/create-db`:
