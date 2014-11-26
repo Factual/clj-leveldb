@@ -5,7 +5,8 @@
     [byte-streams :as bs])
   (:import
     [java.io
-     Closeable]))
+     Closeable
+     File]))
 
 ;; HawtJNI tends to leave trash in /tmp, repeated loading of this
 ;; namespace can add up.  We allow the 10 newest files to stick
@@ -17,10 +18,10 @@
                 "com.factual.clj-leveldb")]
   (let [d (io/file tmp-dir)]
     (doseq [f (->> (.listFiles d)
-                (sort-by #(.lastModified %))
+                (sort-by #(.lastModified ^File %))
                 reverse
                 (drop 10))]
-      (.delete f)))
+      (.delete ^File f)))
   (System/setProperty "library.leveldbjni.path" tmp-dir))
 
 (import
