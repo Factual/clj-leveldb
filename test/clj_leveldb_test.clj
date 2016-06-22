@@ -59,4 +59,28 @@
     (is (= nil (l/get db :a)))
     (is (= :b (l/get snapshot :a))))
 
-  (l/compact db))
+  (l/compact db)
+
+  (l/delete db :a :b :z :y)
+
+  (l/put db :j :k :l :m)
+  (is (= :k (l/get db :j)))
+  (is (= :m (l/get db :l)))
+
+  (l/batch db)
+  (is (= :k (l/get db :j)))
+  (is (= :m (l/get db :l)))
+  (l/batch db {:put [:r :s :t :u]})
+  (is (= :s (l/get db :r)))
+  (is (= :u (l/get db :t)))
+  (l/batch db {:delete [:r :t]})
+  (is (= nil (l/get db :r)))
+  (is (= nil (l/get db :t)))
+
+  (l/batch db {:put [:a :b :c :d]
+               :delete [:j :l]})
+  (is (= :b (l/get db :a)))
+  (is (= :d (l/get db :c)))
+  (is (= nil (l/get db :j)))
+  (is (= nil (l/get db :l)))
+  (is (thrown? AssertionError (l/batch db {:put [:a]}))))

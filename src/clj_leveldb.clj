@@ -391,3 +391,16 @@
          (.compactRange (db- db)
            (bs/to-byte-array (encoder start))
            (bs/to-byte-array (encoder end)))))))
+
+(defn batch
+  "Batch a collection of put and/or delete operations into the supplied `db`.
+   Takes a map of the form `{:put [key1 value1 key2 value2] :delete [key3 key4]}`.
+   If `:put` key is provided, it must contain an even-length sequence of alternating keys and values."
+  ([db] )
+  ([db {puts :put deletes :delete}]
+   (assert (even? (count puts)) ":put option requires even number of keys and values.")
+   (with-open [^Batch batch (batch- db nil)]
+     (doseq [[k v] (partition 2 puts)]
+       (put- batch k v nil))
+     (doseq [k deletes]
+       (del- batch k nil)))))

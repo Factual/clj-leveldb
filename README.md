@@ -3,7 +3,7 @@ This is a self-contained wrapper around [LevelDB](https://code.google.com/p/leve
 ### basic usage
 
 ```clj
-[factual/clj-leveldb "0.1.1"]
+[factual/clj-leveldb "0.1.2"]
 ```
 
 To create or access a database, use `clj-leveldb/create-db`:
@@ -13,7 +13,7 @@ clj-leveldb> (def db (create-db "/tmp/leveldb" {}))
 #'clj-leveldb/db
 ```
 
-This database object can now be used with `clj-leveldb/get`, `put`, `delete`, and `iterator`.
+This database object can now be used with `clj-leveldb/get`, `put`, `delete`, `batch`, and `iterator`.
 
 ```clj
 clj-leveldb> (put db "a" "b")
@@ -42,6 +42,12 @@ clj-leveldb> (put db "a" "b" "c" "d" "e" "f")
 nil
 clj-leveldb> (delete db "a" "c" "e")
 nil
+```
+
+If you need to batch a collection of puts and deletes, use `batch`:
+
+```clj
+clj-leveldb> (batch db {:put ["a" "b" "c" "d"] :delete ["j" "k" "l"]})
 ```
 
 We can also get a sequence of all key/value pairs, either in the entire database or within a given range using `iterator`:
