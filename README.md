@@ -33,7 +33,24 @@ clj-leveldb> (get db "a")
 "b"
 ```
 
-Notice that we haven't defined `key-encoder` or `val-encoder`; this is because there's a default transformation between strings and byte-arrays, which assumes a utf-8 encoding.  If we wanted to support keywords, or use a different encoding, we'd have to explicitly specify encoders.
+Notice that we haven't defined `key-encoder` or `val-encoder`; this is because there's a default transformation between strings and byte-arrays, which assumes a utf-8 encoding.  If we wanted to support keywords, or use a different encoding, we'd have to explicitly specify encoders.  A general purpose serializer can accomplish this flexibly:
+
+```clj
+clj-leveldb> (require '[taoensso.nippy :as n]) ; add to project.clj
+clj-leveldb> (def db (create-db "/tmp/leveldb"
+                       {:key-encoder n/freeze
+                        :val-encoder n/freeze
+                        :key-decoder #(some-> % n/thaw)
+                        :val-decoder #(some-> % n/thaw}))
+#'clj-leveldb/db
+
+;; the following will all roundtrip properly
+
+clj-leveldb> (put db "stringkey" :keyword)
+clj-leveldb> (put db :keywordkey 42)
+clj-leveldb> (put db 1701 [123 456 789])
+clj-leveldb> (put db :even-nested-maps {:k0 "x"})
+```
 
 Both `put` and `delete` can take multiple values, which will be written in batch:
 
